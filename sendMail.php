@@ -10,7 +10,7 @@ if(mail($recepient_email, $subject, $body, "From: $sender_name <$sender_email>")
     echo "email sent";
 };
 //В переменной n хранится двузначное число. Создайте программу,
-//вычисляющую и выводящую на экран сумму цифр n
+//вычисляющую и выводящую на экран сумму цифр n.
 $n = 25;
 $firstNum = (int)($n / 10);
 $secondNum = $n % 10;
