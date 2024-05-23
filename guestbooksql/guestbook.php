@@ -1,58 +1,54 @@
 <?php
-// TODO 1: PREPARING ENVIRONMENT: 1) session 2) functions
 session_start();
 
-function write($data, $filename) {
-    $jsonString = json_encode($data);
-    $fileStream = fopen ($filename , 'a');
-    fwrite ( $fileStream, $jsonString ."\n");
-    fclose ($fileStream );
+function text_to_html($text) {
+    return htmlspecialchars(stripslashes(trim($text)));
+}
+function db_write($aComment, $db){
+    $query = "INSERT INTO comments(email, name, text, date) VALUES(
+'".$aComment ['email']."',
+'".$aComment ['name']."',
+'".$aComment ['text']."',
+'\"NOW()\"'
+)";
+    mysqli_query($db , $query);
+    mysqli_close($db);
 }
 
-function format($data) {
-    $data = trim($data);
-    $data = stripslashes($data);
-    return htmlspecialchars($data);
-}
-
-function read($filename) {
+function comment_read($db) {
     $comments = [];
-    if( file_exists ($filename)) {
-        $fileStream = fopen ( $filename , "r");
-
-        while (! feof ($fileStream )) {
-            $jsonString = fgets ($fileStream);
-            $array = json_decode ( $jsonString , true);
-            if ( empty ($array)) break ;
-            $comments[$array['name']] = $array['text'];
-        }
-        fclose ($fileStream );
+    $result = mysqli_query($db,"SELECT name, text FROM comments ORDER BY date DESC");
+    $id = 0;
+    while ($row = $result->fetch_assoc()) {
+        $comments[$row['name']] = $row['text'];
     }
+    mysqli_close ($db);
     return $comments;
 }
 
-// TODO 2: ROUTING
-
-// TODO 3: CODE by REQUEST METHODS (ACTIONS) GET, POST, etc. (handle data from request): 1) validate 2) working with data source 3) transforming data
-$guestbook = "guestbook.csv";
+$aConfig = require_once 'config.php';
+$db = mysqli_connect ($aConfig['host'],
+    $aConfig ['user'],
+    $aConfig ['pass'],
+    $aConfig ['name']
+);
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $email = $name = $text = "";
 
     if (!empty($_POST["email"]) && !empty($_POST["name"]) && !empty($_POST["text"])) {
-        $email = format($_POST["email"]);
-        $name = format($_POST["name"]);
-        $text = format($_POST["text"]);
+        $email = text_to_html($_POST["email"]);
+        $name = text_to_html($_POST["name"]);
+        $text = text_to_html($_POST["text"]);
         $record = ['name' => $name, 'email' => $email, 'text' => $text];
-        write($record, $guestbook);
+        db_write($record, $db);
+        header("Location: " . $_SERVER['PHP_SELF']);
+        exit();
     }
     else {
-        echo "<p>Заповніть всі поля!</p>";
+        echo "<p style='font-size: 32px;color: red'>Заповніть всі поля!</p>";
     }
 }
-
-
-//TODO 4: RENDER: 1) view (html) 2) data (from php)
 
 ?>
 
@@ -64,12 +60,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <body>
 
 <div class="container">
-
-    <!-- navbar menu -->
     <?php require_once 'sectionNavbar.php' ?>
     <br>
-
-    <!-- guestbook section -->
     <div class="card card-primary">
         <div class="card-header bg-primary text-light">
             GuestBook form
@@ -78,8 +70,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
             <div class="row">
                 <div class="col-sm-6">
-
-                    <!-- TODO: create guestBook html form   -->
                     <form action="" method="POST">
                         <label for="email">Email:</label><br>
                         <input type="email" id="email" name="email"><br>
@@ -89,15 +79,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         <textarea id="text" name="text"></textarea><br>
                         <input type="submit" value="Відправити">
                     </form>
-
                 </div>
             </div>
-
         </div>
     </div>
-
     <br>
-
     <div class="card card-primary">
         <div class="card-header bg-body-secondary text-dark">
             Сomments
@@ -105,12 +91,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <div class="card-body">
             <div class="row">
                 <div class="col-sm-6">
-
-                    <!-- TODO: render guestBook comments   -->
                     <?php
-                    $data = read($guestbook);
+                    $data = comment_read($db);
                     foreach ($data as $name => $comment) {
-                        echo "<p>".$name.":"."<br>".$comment."</p>";
+                        echo "<p><span style=\"color:blue\">$name</span> залишив відгук:" . "<br>" . $comment . "</p>";
                     }
                     ?>
                 </div>
